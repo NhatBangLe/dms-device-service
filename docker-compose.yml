@@ -1,15 +1,17 @@
 services:
   device-postgres-db:
     image: postgres:15.8
-    container_name: device-postgres-db
+    container_name: dms-device-postgres-db
     ports:
-      - "5432:5432"
+      - "${DB_PORT}:5432"
     environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: admin
-      POSTGRES_DB: device_service
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    env_file:
+      - .env
     healthcheck:
-      test: [ "CMD-SHELL", "sh -c 'pg_isready -U admin -d device_service'" ]
+      test: [ "CMD-SHELL", "sh -c 'pg_isready -U ${DB_USER} -d ${DB_NAME}'" ]
       interval: 10s
       timeout: 10s
       retries: 3
@@ -17,22 +19,22 @@ services:
     volumes:
       - ./device-postgres-db:/var/lib/postgresql/data
     networks:
-      - device-network
+      - dms-device-network
   device-service:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: device-service
+    container_name: dms-device-service
     ports:
-      - "8080:8080"
+      - "${SERVICE_PORT}:8080"
     environment:
-      ACTIVE_PROFILE: test
+      ACTIVE_PROFILE: dev
       DB_HOST: device-postgres-db:5432
-      DB_NAME: device-service
-      DB_USER: admin
-      DB_PASSWORD: admin
       ROOT_LOG_LEVEL: error
-      WEB_LOG_LEVEL: info
+      WEB_LOG_LEVEL: debug
+    #      ALLOW_ORIGIN: localhost
+    env_file:
+      - .env
     volumes:
       - ./logs:/dms-device/logs
     depends_on:
@@ -40,6 +42,6 @@ services:
         condition: service_healthy
         restart: true
     networks:
-      - device-network
+      - dms-device-network
 networks:
-  device-network
+  dms-device-network:
